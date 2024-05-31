@@ -18,6 +18,7 @@ public class DatabaseUI : MonoBehaviour
     [SerializeField] string m_Password = "1234";
 
     private bool m_isConnectTestComplete; //중요하지 않음
+    private bool m_isConnectTable;
 
     private static MySqlConnection m_DbConnection;
 
@@ -26,7 +27,7 @@ public class DatabaseUI : MonoBehaviour
         this.gameObject.SetActive(false);
     }
 
-    private void SendQuery(string queryStr,string tableName)
+    private void SendQuery(string queryStr, string tableName)
     {
         //있으면 Select 관련 함수 호출
         if (queryStr.Contains("SELECT"))
@@ -34,12 +35,38 @@ public class DatabaseUI : MonoBehaviour
             DataSet dataSet = OnSelectRequest(queryStr, tableName);
             Text_DBResult.text = DeformatResult(dataSet);
         }
-        else //없다면 Insert 또는 Update 관련 쿼리
-        {
+        else if(queryStr.Contains("INSERT"))
+        {//없다면 Insert 또는 Update 관련 쿼리
             Text_DBResult.text = OnInsertOnUpdateRequest(queryStr) ? "성공" : "실패";
+        }
+        else
+        {
+            Text_DBResult.text = OnUpdateRequest(queryStr) ? "성공" : "실패";
         }
     }
     //sql 관련 함수로 사용하려면 static 함수로 정의해야함.
+
+    public static bool OnUpdateRequest(string query)
+    {
+        try
+        {
+            MySqlCommand sqlCommand = new MySqlCommand();
+            sqlCommand.Connection = m_DbConnection;
+            sqlCommand.CommandText = query;
+
+            m_DbConnection.Open();
+            sqlCommand.ExecuteNonQuery();
+            m_DbConnection.Close();
+            return true;
+
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+
     public static bool OnInsertOnUpdateRequest(string query)
     {
         try
@@ -89,7 +116,7 @@ public class DatabaseUI : MonoBehaviour
             MySqlDataAdapter sd = new MySqlDataAdapter(sqlCmd);
             DataSet dataSet = new DataSet();
             sd.Fill(dataSet, tableName);
-
+            
             m_DbConnection.Close();
             return dataSet;
         }
@@ -135,13 +162,16 @@ public class DatabaseUI : MonoBehaviour
             Text_Log.text = "DB 연결을 먼저 시도하세요";
             return;
         }
+
         Text_Log.text = string.Empty;
 
         string query = string.IsNullOrWhiteSpace(Input_Query.text) ? "SELECT U_Name,U_Password FROM user_info"
             : Input_Query.text;
 
+
         SendQuery(query, "user_info");
     }
+    
 
     public void OnClick_OpenDatabaseUI()
     {
